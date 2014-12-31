@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 // Provides a way to point same tests to different server
 // at runtime
 var BaseUrl string
+var JsonOutputFile string
 
 // TestSuite Configuration File Format
 type TestSuite struct {
@@ -29,6 +31,7 @@ type TestSuiteSetup struct {
 	Method   string
 	Body     string
 	Expects  TestExpectation
+	Result   TestResult
 }
 
 type TestExpectation struct {
@@ -37,17 +40,15 @@ type TestExpectation struct {
 }
 
 type TestResult struct {
-	TestSetup            TestSuiteSetup
 	ReturnCode           int
 	TestCompletionStatus bool
+	Body                 string
+	ElapsedTime          float64
 }
 
 func RunTestSuite(fileName string) error {
 	//http://stackoverflow.com/questions/16681003/how-do-i-parse-a-json-file-into-a-struct-with-go
 	var testSetup TestSuite
-
-	// Wait group to finish when all tests are complete
-	//wg := new(sync.WaitGroup)
 
 	// Open configuration file
 	configFile, err := os.Open(fileName)
@@ -65,27 +66,38 @@ func RunTestSuite(fileName string) error {
 
 	fmt.Printf("%#v\n", testSetup)
 
-	// How many tests to wait for
-	//wg.Add(len(testSetup.Tests))
-
 	for _, v := range testSetup.Tests {
 		//go RunTest(v)
-		RunTest(v)
+		RunTest(&v)
 	}
 
-	// Wait for all tests to complete
-	//wg.Wait()
+	// Output results to file
+	if JsonOutputFile != "" {
+		// Convert to nicely formatted json
+		jsonByteArray, err := json.MarshalIndent(testSetup, "", "  ")
+		if err != nil {
+			fmt.Println("Error writing json formatted output file. ", err)
+			return err
+		}
+
+		f, err := os.Create(JsonOutputFile)
+		if err != nil {
+			fmt.Println("Error writing json formatted output file. ", err)
+			return err
+		}
+
+		defer f.Close()
+		_, err = f.Write(jsonByteArray)
+		if err != nil {
+			fmt.Println("Error writing json formatted output file. ", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
-func RunTest(test TestSuiteSetup) {
-	//defer wg.Done()
-
-	var testResult TestResult
-
-	// Get test results
-	testResult.TestSetup = test
-
+func RunTest(test *TestSuiteSetup) {
 	fmt.Println("Running test:", test.TestName)
 
 	// Call Uri
@@ -101,7 +113,7 @@ func RunTest(test TestSuiteSetup) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		testResult.TestCompletionStatus = false
+		test.Result.TestCompletionStatus = false
 
 		fmt.Println("Error calling method ", err)
 		return
@@ -110,10 +122,14 @@ func RunTest(test TestSuiteSetup) {
 
 	elapsed := time.Since(start)
 
-	// Evaluate if test has passed
-	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() < test.Expects.MaxSeconds)
+	// Save the body of the returned API
+	body, _ := ioutil.ReadAll(resp.Body)
 
-	//body, _ := ioutil.ReadAll(resp.Body)
+	// Save test results and evaluate
+	test.Result.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() < test.Expects.MaxSeconds)
+	test.Result.ReturnCode = resp.StatusCode
+	test.Result.ElapsedTime = elapsed.Seconds()
+	test.Result.Body = string(body)
 
 	// Show consolidated run results
 	fmt.Println("Response Headers:", resp.Header)
@@ -123,25 +139,24 @@ func RunTest(test TestSuiteSetup) {
 	fmt.Println("Expected Status Code:", test.Expects.ReturnCode)
 	fmt.Println("Response Seconds: ", elapsed.Seconds())
 	fmt.Println("Expected Seconds: ", test.Expects.MaxSeconds)
-	fmt.Println("Test Status:", testResult.TestCompletionStatus, "\n")
+	fmt.Println("Test Status:", test.Result.TestCompletionStatus, "\n")
 }
 
 func main() {
 	// Get command line args for Service base URL
 	flag.StringVar(&BaseUrl, "url", "", "The base URL for services")
+	flag.StringVar(&JsonOutputFile, "json", "", "An optional filename, if supplied then test result and the test itself are output to json file.")
 	flag.Parse()
 	if BaseUrl == "" {
 		log.Fatal("url parameter is required")
 		return
 	}
 
-	fmt.Println("BaseUrl: ", BaseUrl)
+	fmt.Println("BaseUrl       : ", BaseUrl)
+	fmt.Println("JsonOutputFile: ", JsonOutputFile)
 
 	// Read the test definition file - TBD: support files from a directory
 	// Format of filename: *.tapi.js
 	// Currently supports: test.tapi.js
 	_ = RunTestSuite("test.tapi.js")
-
-	// Launch go routine for each test (concurrency)
-	// or maybe not - might be clearer to run sequentially
 }
