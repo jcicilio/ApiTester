@@ -2,12 +2,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
-	"sync"
+	"time"
 )
 
 // Base URL for tests, passed in for each program run
@@ -31,6 +33,13 @@ type TestSuiteSetup struct {
 
 type TestExpectation struct {
 	ReturnCode int
+	MaxSeconds float64
+}
+
+type TestResult struct {
+	TestSetup            TestSuiteSetup
+	ReturnCode           int
+	TestCompletionStatus bool
 }
 
 func RunTestSuite(fileName string) error {
@@ -38,7 +47,7 @@ func RunTestSuite(fileName string) error {
 	var testSetup TestSuite
 
 	// Wait group to finish when all tests are complete
-	wg := new(sync.WaitGroup)
+	//wg := new(sync.WaitGroup)
 
 	// Open configuration file
 	configFile, err := os.Open(fileName)
@@ -57,21 +66,64 @@ func RunTestSuite(fileName string) error {
 	fmt.Printf("%#v\n", testSetup)
 
 	// How many tests to wait for
-	wg.Add(len(testSetup.Tests))
+	//wg.Add(len(testSetup.Tests))
 
 	for _, v := range testSetup.Tests {
-		go RunTest(v, wg)
+		//go RunTest(v)
+		RunTest(v)
 	}
 
 	// Wait for all tests to complete
-	wg.Wait()
+	//wg.Wait()
 	return nil
 }
 
-func RunTest(test TestSuiteSetup, wg *sync.WaitGroup) {
-	defer wg.Done()
+func RunTest(test TestSuiteSetup) {
+	//defer wg.Done()
+
+	var testResult TestResult
+
+	// Get test results
+	testResult.TestSetup = test
 
 	fmt.Println("Running test:", test.TestName)
+
+	// Call Uri
+	// Setup request
+	var jsonStr = []byte(test.Body)
+	req, err := http.NewRequest(test.Method, BaseUrl+test.Uri, bytes.NewBuffer(jsonStr))
+	//req.Header.Set("X-Custom-Header", "myvalue")
+	//req.Header.Set("Content-Type", "application/json")
+
+	// Setup http client and start time
+	start := time.Now()
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		testResult.TestCompletionStatus = false
+
+		fmt.Println("Error calling method ", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	elapsed := time.Since(start)
+
+	// Evaluate if test has passed
+	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() < test.Expects.MaxSeconds)
+
+	//body, _ := ioutil.ReadAll(resp.Body)
+
+	// Show consolidated run results
+	fmt.Println("Response Headers:", resp.Header)
+	//fmt.Println("Response Body:", string(body))
+	fmt.Println("Response Status:", resp.Status)
+	fmt.Println("Response Status Code:", resp.StatusCode)
+	fmt.Println("Expected Status Code:", test.Expects.ReturnCode)
+	fmt.Println("Response Seconds: ", elapsed.Seconds())
+	fmt.Println("Expected Seconds: ", test.Expects.MaxSeconds)
+	fmt.Println("Test Status:", testResult.TestCompletionStatus, "\n")
 }
 
 func main() {
@@ -91,4 +143,5 @@ func main() {
 	_ = RunTestSuite("test.tapi.js")
 
 	// Launch go routine for each test (concurrency)
+	// or maybe not - might be clearer to run sequentially
 }
