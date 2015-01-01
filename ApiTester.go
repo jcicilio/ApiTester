@@ -94,14 +94,15 @@ func RunTestSuite(fileName string) (TestSuite, error) {
 		testSetup.TestSuiteResultStatus = testSetup.TestSuiteResultStatus && testSetup.Tests[i].Result.TestCompletionStatus
 	}
 
-	// Output results to file
+	// Convert to nicely formatted json
+	jsonByteArray, err := json.MarshalIndent(testSetup, "", "  ")
+	if err != nil {
+		fmt.Println("Error creating json for result output. ", err)
+		return testSetup, err
+	}
+
+	// Output results to file if file path provided on command line
 	if JsonOutputFile != "" {
-		// Convert to nicely formatted json
-		jsonByteArray, err := json.MarshalIndent(testSetup, "", "  ")
-		if err != nil {
-			fmt.Println("Error writing json formatted output file. ", err)
-			return testSetup, err
-		}
 
 		f, err := os.Create(JsonOutputFile)
 		if err != nil {
@@ -115,6 +116,11 @@ func RunTestSuite(fileName string) (TestSuite, error) {
 			fmt.Println("Error writing json formatted output file. ", err)
 			return testSetup, err
 		}
+	}
+
+	// Output results to API if api path provided on the command line
+	if PostPath != "" {
+		WriteTestSuiteResultToApi(jsonByteArray)
 	}
 
 	return testSetup, err
@@ -212,6 +218,23 @@ func CheckHeaders(resp *http.Response, expectedHeaders []HeaderMap) (bool, error
 	}
 
 	return true, nil
+}
+
+func WriteTestSuiteResultToApi(testSuiteResults []byte) {
+	// Setup for Posting Result
+	req, err := http.NewRequest("POST", PostPath, bytes.NewBuffer(testSuiteResults))
+	if err != nil {
+		fmt.Println("Error setting up request for posting to API ", err)
+		return
+	}
+
+	// Write the results to API
+	client := &http.Client{}
+	_, err = client.Do(req)
+	if err != nil {
+		fmt.Println("Error writing test results to:  ", PostPath, " ", err)
+		return
+	}
 }
 
 func main() {
