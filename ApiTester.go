@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -21,8 +20,10 @@ var JsonOutputFile string
 
 // TestSuite Configuration File Format
 type TestSuite struct {
-	TestSuiteName string
-	Tests         []TestSuiteSetup
+	TestSuiteName         string
+	TestSuiteResultStatus bool
+	TestSuiteTotalSeconds float64
+	Tests                 []TestSuiteSetup
 }
 
 type TestSuiteSetup struct {
@@ -42,12 +43,13 @@ type TestExpectation struct {
 type TestResult struct {
 	RunWhen              time.Time
 	ReturnCode           int
+	ReturnCodeStatusText string
 	TestCompletionStatus bool
 	Body                 string
 	ElapsedTime          float64
 }
 
-func RunTestSuite(fileName string) error {
+func RunTestSuite(fileName string) (TestSuite, error) {
 	//http://stackoverflow.com/questions/16681003/how-do-i-parse-a-json-file-into-a-struct-with-go
 	var testSetup TestSuite
 
@@ -55,20 +57,27 @@ func RunTestSuite(fileName string) error {
 	configFile, err := os.Open(fileName)
 	if err != nil {
 		fmt.Println("RunTestSuite: error opening config file - ", fileName, " ", err.Error())
-		return err
+		return testSetup, err
 	}
 
 	// Parse configuration
 	jsonParser := json.NewDecoder(configFile)
 	if err = jsonParser.Decode(&testSetup); err != nil {
 		fmt.Println("RunTestSuite: error parsing config file - ", fileName, " ", err.Error())
-		return err
+		return testSetup, err
 	}
+
+	// Setup overall result status for future ANDing
+	testSetup.TestSuiteResultStatus = true
 
 	// Note that range returns copy of object, so use
 	// the index if we want to modify the contents of base object
 	for i, _ := range testSetup.Tests {
 		RunTest(&testSetup.Tests[i])
+
+		// Do some overall totals and overall result status
+		testSetup.TestSuiteTotalSeconds += testSetup.Tests[i].Result.ElapsedTime
+		testSetup.TestSuiteResultStatus = testSetup.TestSuiteResultStatus && testSetup.Tests[i].Result.TestCompletionStatus
 	}
 
 	// Output results to file
@@ -77,24 +86,24 @@ func RunTestSuite(fileName string) error {
 		jsonByteArray, err := json.MarshalIndent(testSetup, "", "  ")
 		if err != nil {
 			fmt.Println("Error writing json formatted output file. ", err)
-			return err
+			return testSetup, err
 		}
 
 		f, err := os.Create(JsonOutputFile)
 		if err != nil {
 			fmt.Println("Error writing json formatted output file. ", err)
-			return err
+			return testSetup, err
 		}
 
 		defer f.Close()
 		_, err = f.Write(jsonByteArray)
 		if err != nil {
 			fmt.Println("Error writing json formatted output file. ", err)
-			return err
+			return testSetup, err
 		}
 	}
 
-	return nil
+	return testSetup, err
 }
 
 func RunTest(test *TestSuiteSetup) {
@@ -128,16 +137,17 @@ func RunTest(test *TestSuiteSetup) {
 	var testResult TestResult
 	// Save test results and evaluate
 	testResult.RunWhen = start
-	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() < test.Expects.MaxSeconds)
+	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() <= test.Expects.MaxSeconds)
 	testResult.ReturnCode = resp.StatusCode
+	testResult.ReturnCodeStatusText = resp.Status
 	testResult.ElapsedTime = elapsed.Seconds()
 	testResult.Body = string(body)
 	test.Result = testResult
 
 	// Show consolidated run results
 	fmt.Println("Response Headers:", resp.Header)
-	//fmt.Println("Response Body:", string(body))
-	fmt.Println("Response Status:", resp.Status)
+	fmt.Println("Response Body:", testResult.Body)
+	fmt.Println("Response Status Text:", testResult.ReturnCodeStatusText)
 	fmt.Println("Response Status Code:", test.Result.ReturnCode)
 	fmt.Println("Expected Status Code:", test.Expects.ReturnCode)
 	fmt.Println("Response Seconds: ", test.Result.ElapsedTime)
@@ -153,16 +163,31 @@ func main() {
 
 	// Must have a base URL to run tests for
 	if BaseUrl == "" {
-		log.Fatal("url parameter is required")
-		return
+		fmt.Println("url parameter is required")
+		os.Exit(-1)
 	}
-
-	fmt.Println("BaseUrl       : ", BaseUrl)
-	fmt.Println("JsonOutputFile: ", JsonOutputFile)
-	fmt.Println()
 
 	// Read the test definition file - TBD: support files from a directory
 	// Format of filename: *.tapi.js
 	// Currently supports: test.tapi.js
-	_ = RunTestSuite("test.tapi.js")
+	result, err := RunTestSuite("test.tapi.js")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+
+	fmt.Println()
+	fmt.Println("TestSuite Name: ", result.TestSuiteName)
+	fmt.Println("TestSuite ElapsedTime (s): ", result.TestSuiteTotalSeconds)
+	fmt.Println("TestSuite Overall Status: ", result.TestSuiteResultStatus)
+	fmt.Println("TestSuite BaseUrl: ", BaseUrl)
+	fmt.Println("TestSuite OutputFile: ", JsonOutputFile)
+	fmt.Println()
+
+	// If all tests pass then exit code zero
+	if result.TestSuiteResultStatus {
+		os.Exit(0)
+	}
+
+	os.Exit(-1)
 }

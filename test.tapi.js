@@ -6,7 +6,7 @@
 			"Uri":"",
 			"Method":"POST",
 			"Body":"",
-			"Expects": {"ReturnCode":404, "MaxSeconds":0.001}
+			"Expects": {"ReturnCode":404, "MaxSeconds":0.300}
 		},
 		{
 			"TestName":"02",
