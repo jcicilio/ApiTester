@@ -1,0 +1,88 @@
+{
+  "TestSuiteName": "Sample Tests",
+  "TestSuiteDescription": "A set of sample tests for evaluating the tester",
+  "TestSuiteResultStatus": true,
+  "TestSuiteTotalSeconds": 0.1790103,
+  "Tests": [
+    {
+      "TestName": "01",
+      "TestDescription": "The test description 01",
+      "Uri": "",
+      "Method": "POST",
+      "Body": "",
+      "Headers": [
+        {
+          "Key": "Content-Type",
+          "Value": "application/json"
+        },
+        {
+          "Key": "Authorization",
+          "Value": "SomeAuthKey"
+        }
+      ],
+      "Expects": {
+        "ReturnCode": 404,
+        "MaxSeconds": 0.3,
+        "Headers": null
+      },
+      "Result": {
+        "RunWhen": "2015-01-01T14:44:08.8249503-05:00",
+        "ReturnCode": 404,
+        "ReturnCodeStatusText": "404 Not Found",
+        "TestCompletionStatus": true,
+        "Body": "404 page not found\n",
+        "ElapsedTime": 0.1770102,
+        "ErrorMessage": null
+      }
+    },
+    {
+      "TestName": "02",
+      "TestDescription": "The test description 02",
+      "Uri": "",
+      "Method": "GET",
+      "Body": "",
+      "Headers": null,
+      "Expects": {
+        "ReturnCode": 200,
+        "MaxSeconds": 0.10001,
+        "Headers": [
+          {
+            "Key": "Content-type",
+            "Value": "application/json"
+          }
+        ]
+      },
+      "Result": {
+        "RunWhen": "2015-01-01T14:44:09.0029605-05:00",
+        "ReturnCode": 200,
+        "ReturnCodeStatusText": "200 OK",
+        "TestCompletionStatus": true,
+        "Body": "{\"version\":\"1.0.1\"}",
+        "ElapsedTime": 0,
+        "ErrorMessage": null
+      }
+    },
+    {
+      "TestName": "03",
+      "TestDescription": "The test description 03",
+      "Uri": "api/log",
+      "Method": "POST",
+      "Body": "{\"a\":100, \"b\":200}",
+      "Headers": null,
+      "Expects": {
+        "ReturnCode": 201,
+        "MaxSeconds": 0.1,
+        "Headers": null
+      },
+      "Result": {
+        "RunWhen": "2015-01-01T14:44:09.0029605-05:00",
+        "ReturnCode": 201,
+        "ReturnCodeStatusText": "201 Created",
+        "TestCompletionStatus": true,
+        "Body": "",
+        "ElapsedTime": 0.0020001000000000003,
+        "ErrorMessage": null
+      }
+    }
+  ]
+}

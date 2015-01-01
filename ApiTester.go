@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -51,6 +52,7 @@ type TestResult struct {
 	TestCompletionStatus bool
 	Body                 string
 	ElapsedTime          float64
+	ErrorMessage         []string
 }
 
 type HeaderMap struct {
@@ -158,15 +160,30 @@ func RunTest(test *TestSuiteSetup) {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	// Save test results and evaluate
-
 	testResult.RunWhen = start
 	testResult.ReturnCode = resp.StatusCode
 	testResult.ReturnCodeStatusText = resp.Status
 	testResult.ElapsedTime = elapsed.Seconds()
 	testResult.Body = string(body)
-	// Evaluate the headers: TBD
 
-	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() <= test.Expects.MaxSeconds)
+	// Evaluate the headers
+	headersMatch, err := CheckHeaders(resp, test.Expects.Headers)
+	if err != nil {
+		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint(err))
+	}
+
+	// Overall result of test
+	responseCodeMatch := (resp.StatusCode == test.Expects.ReturnCode)
+	if !responseCodeMatch {
+		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint("Response Code Mismatch"))
+	}
+
+	expectedTimeMatch := (elapsed.Seconds() <= test.Expects.MaxSeconds)
+	if !expectedTimeMatch {
+		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint("Elapsed time greater than expected time"))
+	}
+
+	testResult.TestCompletionStatus = responseCodeMatch && expectedTimeMatch && headersMatch
 
 	test.Result = testResult
 
@@ -181,8 +198,26 @@ func RunTest(test *TestSuiteSetup) {
 	fmt.Println("Test Status:", test.Result.TestCompletionStatus, "\n")
 }
 
+func CheckHeaders(resp *http.Response, expectedHeaders []HeaderMap) (bool, error) {
+	// Check that each expected header matches the header response
+	for _, h := range expectedHeaders {
+		expectedHeader := resp.Header.Get(h.Key)
+		if expectedHeader != h.Value {
+			//fmt.Println("Header mismatch: ", h.Key, ":", h.Value, " != ", expectedHeader)
+			return false, errors.New(fmt.Sprint("Header mismatch: ", h.Key, ":", h.Value, " != ", expectedHeader))
+		}
+	}
+
+	return true, nil
+}
+
 func main() {
-	// Get command line args for Service base URL
+	// Get command line args for
+	//
+	// url = Service base URL to test
+	// json = json file name to write result to
+	// postpath = url of API to post test results to
+	//
 	flag.StringVar(&BaseUrl, "url", "", "The base URL for services")
 	flag.StringVar(&JsonOutputFile, "json", "", "An optional filename, if supplied then test result and the test itself are output to json file.")
 	flag.Parse()

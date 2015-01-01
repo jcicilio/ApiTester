@@ -8,7 +8,7 @@
 			"Uri":"",
 			"Method":"POST",
 			"Body":"",
-			"Headers":[{"Key":"Content-type","Value":"application/json"},{"Key":"Authorization","Value":"SomeAuthKey"}],
+			"Headers":[{"Key":"Content-Type","Value":"application/json"},{"Key":"Authorization","Value":"SomeAuthKey"}],
 			"Expects": {"ReturnCode":404, "MaxSeconds":0.300}
 		},
 		{
@@ -17,7 +17,7 @@
 			"Uri":"",
 			"Method":"GET",
 			"Body":"",
-			"Expects": {"ReturnCode":200, "MaxSeconds":0.1,"Headers":[{"Key":"Content-type","Value":"application/json"}]}
+			"Expects": {"ReturnCode":200, "MaxSeconds":0.10001,"Headers":[{"Key":"Content-type","Value":"application/json"}]}
 		},
 		{
 			"TestName":"03",
