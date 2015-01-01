@@ -40,6 +40,7 @@ type TestExpectation struct {
 }
 
 type TestResult struct {
+	RunWhen              time.Time
 	ReturnCode           int
 	TestCompletionStatus bool
 	Body                 string
@@ -64,11 +65,10 @@ func RunTestSuite(fileName string) error {
 		return err
 	}
 
-	fmt.Printf("%#v\n", testSetup)
-
-	for _, v := range testSetup.Tests {
-		//go RunTest(v)
-		RunTest(&v)
+	// Note that range returns copy of object, so use
+	// the index if we want to modify the contents of base object
+	for i, _ := range testSetup.Tests {
+		RunTest(&testSetup.Tests[i])
 	}
 
 	// Output results to file
@@ -125,19 +125,22 @@ func RunTest(test *TestSuiteSetup) {
 	// Save the body of the returned API
 	body, _ := ioutil.ReadAll(resp.Body)
 
+	var testResult TestResult
 	// Save test results and evaluate
-	test.Result.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() < test.Expects.MaxSeconds)
-	test.Result.ReturnCode = resp.StatusCode
-	test.Result.ElapsedTime = elapsed.Seconds()
-	test.Result.Body = string(body)
+	testResult.RunWhen = start
+	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() < test.Expects.MaxSeconds)
+	testResult.ReturnCode = resp.StatusCode
+	testResult.ElapsedTime = elapsed.Seconds()
+	testResult.Body = string(body)
+	test.Result = testResult
 
 	// Show consolidated run results
 	fmt.Println("Response Headers:", resp.Header)
 	//fmt.Println("Response Body:", string(body))
 	fmt.Println("Response Status:", resp.Status)
-	fmt.Println("Response Status Code:", resp.StatusCode)
+	fmt.Println("Response Status Code:", test.Result.ReturnCode)
 	fmt.Println("Expected Status Code:", test.Expects.ReturnCode)
-	fmt.Println("Response Seconds: ", elapsed.Seconds())
+	fmt.Println("Response Seconds: ", test.Result.ElapsedTime)
 	fmt.Println("Expected Seconds: ", test.Expects.MaxSeconds)
 	fmt.Println("Test Status:", test.Result.TestCompletionStatus, "\n")
 }
@@ -147,6 +150,8 @@ func main() {
 	flag.StringVar(&BaseUrl, "url", "", "The base URL for services")
 	flag.StringVar(&JsonOutputFile, "json", "", "An optional filename, if supplied then test result and the test itself are output to json file.")
 	flag.Parse()
+
+	// Must have a base URL to run tests for
 	if BaseUrl == "" {
 		log.Fatal("url parameter is required")
 		return
@@ -154,6 +159,7 @@ func main() {
 
 	fmt.Println("BaseUrl       : ", BaseUrl)
 	fmt.Println("JsonOutputFile: ", JsonOutputFile)
+	fmt.Println()
 
 	// Read the test definition file - TBD: support files from a directory
 	// Format of filename: *.tapi.js
