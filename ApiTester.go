@@ -21,23 +21,27 @@ var JsonOutputFile string
 // TestSuite Configuration File Format
 type TestSuite struct {
 	TestSuiteName         string
+	TestSuiteDescription  string
 	TestSuiteResultStatus bool
 	TestSuiteTotalSeconds float64
 	Tests                 []TestSuiteSetup
 }
 
 type TestSuiteSetup struct {
-	TestName string
-	Uri      string
-	Method   string
-	Body     string
-	Expects  TestExpectation
-	Result   TestResult
+	TestName        string
+	TestDescription string
+	Uri             string
+	Method          string
+	Body            string
+	Headers         []HeaderMap
+	Expects         TestExpectation
+	Result          TestResult
 }
 
 type TestExpectation struct {
 	ReturnCode int
 	MaxSeconds float64
+	Headers    []HeaderMap
 }
 
 type TestResult struct {
@@ -47,6 +51,11 @@ type TestResult struct {
 	TestCompletionStatus bool
 	Body                 string
 	ElapsedTime          float64
+}
+
+type HeaderMap struct {
+	Key   string
+	Value string
 }
 
 func RunTestSuite(fileName string) (TestSuite, error) {
@@ -66,6 +75,8 @@ func RunTestSuite(fileName string) (TestSuite, error) {
 		fmt.Println("RunTestSuite: error parsing config file - ", fileName, " ", err.Error())
 		return testSetup, err
 	}
+
+	//fmt.Println(testSetup.Tests[0].RequestHeaders)
 
 	// Setup overall result status for future ANDing
 	testSetup.TestSuiteResultStatus = true
@@ -108,13 +119,24 @@ func RunTestSuite(fileName string) (TestSuite, error) {
 
 func RunTest(test *TestSuiteSetup) {
 	fmt.Println("Running test:", test.TestName)
+	var testResult TestResult
 
 	// Call Uri
 	// Setup request
 	var jsonStr = []byte(test.Body)
 	req, err := http.NewRequest(test.Method, BaseUrl+test.Uri, bytes.NewBuffer(jsonStr))
-	//req.Header.Set("X-Custom-Header", "myvalue")
-	//req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		testResult.TestCompletionStatus = false
+		test.Result = testResult
+
+		fmt.Println("Error setting up request for test: ", test.TestName, "  ", err)
+		return
+	}
+
+	// Set the request headers
+	for _, v := range test.Headers {
+		req.Header.Set(v.Key, v.Value)
+	}
 
 	// Setup http client and start time
 	start := time.Now()
@@ -122,7 +144,8 @@ func RunTest(test *TestSuiteSetup) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		test.Result.TestCompletionStatus = false
+		testResult.TestCompletionStatus = false
+		test.Result = testResult
 
 		fmt.Println("Error calling method ", err)
 		return
@@ -134,14 +157,17 @@ func RunTest(test *TestSuiteSetup) {
 	// Save the body of the returned API
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	var testResult TestResult
 	// Save test results and evaluate
+
 	testResult.RunWhen = start
-	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() <= test.Expects.MaxSeconds)
 	testResult.ReturnCode = resp.StatusCode
 	testResult.ReturnCodeStatusText = resp.Status
 	testResult.ElapsedTime = elapsed.Seconds()
 	testResult.Body = string(body)
+	// Evaluate the headers: TBD
+
+	testResult.TestCompletionStatus = (resp.StatusCode == test.Expects.ReturnCode) && (elapsed.Seconds() <= test.Expects.MaxSeconds)
+
 	test.Result = testResult
 
 	// Show consolidated run results
@@ -151,7 +177,7 @@ func RunTest(test *TestSuiteSetup) {
 	fmt.Println("Response Status Code:", test.Result.ReturnCode)
 	fmt.Println("Expected Status Code:", test.Expects.ReturnCode)
 	fmt.Println("Response Seconds: ", test.Result.ElapsedTime)
-	fmt.Println("Expected Seconds: ", test.Expects.MaxSeconds)
+	fmt.Println("Expected Maximum Seconds: ", test.Expects.MaxSeconds)
 	fmt.Println("Test Status:", test.Result.TestCompletionStatus, "\n")
 }
 
