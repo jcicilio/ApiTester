@@ -18,6 +18,7 @@ import (
 // at runtime
 var BaseUrl string
 var JsonOutputFile string
+var PostPath string
 
 // TestSuite Configuration File Format
 type TestSuite struct {
@@ -172,17 +173,19 @@ func RunTest(test *TestSuiteSetup) {
 		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint(err))
 	}
 
-	// Overall result of test
+	// Evaluate the response code
 	responseCodeMatch := (resp.StatusCode == test.Expects.ReturnCode)
 	if !responseCodeMatch {
 		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint("Response Code Mismatch"))
 	}
 
+	// Evaluate the response time
 	expectedTimeMatch := (elapsed.Seconds() <= test.Expects.MaxSeconds)
 	if !expectedTimeMatch {
 		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint("Elapsed time greater than expected time"))
 	}
 
+	// Overall result of test
 	testResult.TestCompletionStatus = responseCodeMatch && expectedTimeMatch && headersMatch
 
 	test.Result = testResult
@@ -220,6 +223,7 @@ func main() {
 	//
 	flag.StringVar(&BaseUrl, "url", "", "The base URL for services")
 	flag.StringVar(&JsonOutputFile, "json", "", "An optional filename, if supplied then test result and the test itself are output to json file.")
+	flag.StringVar(&PostPath, "post", "", "An optional api route to post the test results to. Results are posted as json")
 	flag.Parse()
 
 	// Must have a base URL to run tests for
