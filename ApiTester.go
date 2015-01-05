@@ -1,4 +1,24 @@
-// ApiTester
+/*
+
+A testing framework for API testing.
+
+Current expectations supported
+	- Maximum Time To Complete
+
+	- Expected Headers
+
+	- Expected Return Code
+
+
+Command Line Parameters
+
+	--url = Service base URL to test, the URL of the API being tested
+
+	--json = json file name to write result to, when provided a file to write test results to.
+
+	--postpath = An optional url to the API to post test results to, allows for storing test results in MongoDb
+
+*/
 package main
 
 import (
