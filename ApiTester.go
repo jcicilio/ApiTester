@@ -46,6 +46,7 @@ type TestSuite struct {
 	TestSuiteDescription  string
 	TestSuiteResultStatus bool
 	TestSuiteTotalSeconds float64
+	TestSuiteStartTime    time.Time
 	Tests                 []TestSuiteSetup
 }
 
@@ -84,6 +85,8 @@ type HeaderMap struct {
 func RunTestSuite(fileName string) (TestSuite, error) {
 	//http://stackoverflow.com/questions/16681003/how-do-i-parse-a-json-file-into-a-struct-with-go
 	var testSetup TestSuite
+
+	testSetup.TestSuiteStartTime = time.Now()
 
 	// Open configuration file
 	configFile, err := os.Open(fileName)
@@ -156,6 +159,7 @@ func RunTest(test *TestSuiteSetup) {
 	req, err := http.NewRequest(test.Method, BaseUrl+test.Uri, bytes.NewBuffer(jsonStr))
 	if err != nil {
 		testResult.TestCompletionStatus = false
+		testResult.ErrorMessage = append(testResult.ErrorMessage, fmt.Sprint(err))
 		test.Result = testResult
 
 		fmt.Println("Error setting up request for test: ", test.TestName, "  ", err)
