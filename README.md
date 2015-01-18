@@ -18,15 +18,14 @@ ApiTesting Framework written in GO.
 Command Line Parameters
 
 * --url = Service base URL to test, the URL of the API being tested
+* --cfg = An optional test configuration file. Default to 'test.tapi.js'.
 * --json = optional file name to write test result to
 * --postpath = An optional url to the Api (see jcicilio/Api) to post test results to. Allows storing test results in MongoDb
-* 
+
 
 # Test Configuration File
 
-Currently test.tapi.js
-
-TBD: adding test filename to command line arguments.
+See --cfg Command Line Argument for name of file
 
 Each test file defines a test suite.
 
@@ -39,9 +38,9 @@ Each test file defines a test suite.
 * Tests.Method - the HTTP Method to use for the test
 * Tests.Body - string encoded JSON
 * Tests.Headers - an array of Key Value pairs defining the headers to use with the test
-* Tests.Expects
-* 
-TBD....
+* Tests.Expects.ReturnCode - the expected return code for the test
+* Tests.Expects.MaxSeconds - the maximum amount if time in seconds the test is expected to complete in
+* Tests.Expects.Headers - an array of Key Value pairs defining the headers expected to be returned in the response
 
 
 ```
@@ -76,3 +75,7 @@ TBD....
 	]
 }
 ```
+
+## Features Considering
+
+* Tests.Expects.BodyContains - expectation that the body of the response will contain specified contents

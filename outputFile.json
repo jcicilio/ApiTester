@@ -2,7 +2,7 @@
   "TestSuiteName": "Sample Tests",
   "TestSuiteDescription": "A set of sample tests for evaluating the tester",
   "TestSuiteResultStatus": true,
-  "TestSuiteTotalSeconds": 0.1790103,
+  "TestSuiteTotalSeconds": 0.156009,
   "Tests": [
     {
       "TestName": "01",
@@ -26,12 +26,12 @@
         "Headers": null
       },
       "Result": {
-        "RunWhen": "2015-01-01T14:44:08.8249503-05:00",
+        "RunWhen": "2015-01-04T15:25:08.7873873-05:00",
         "ReturnCode": 404,
         "ReturnCodeStatusText": "404 Not Found",
         "TestCompletionStatus": true,
         "Body": "404 page not found\n",
-        "ElapsedTime": 0.1770102,
+        "ElapsedTime": 0.1540088,
         "ErrorMessage": null
       }
     },
@@ -53,12 +53,12 @@
         ]
       },
       "Result": {
-        "RunWhen": "2015-01-01T14:44:09.0029605-05:00",
+        "RunWhen": "2015-01-04T15:25:08.9413961-05:00",
         "ReturnCode": 200,
         "ReturnCodeStatusText": "200 OK",
         "TestCompletionStatus": true,
         "Body": "{\"version\":\"1.0.1\"}",
-        "ElapsedTime": 0,
+        "ElapsedTime": 0.0010001,
         "ErrorMessage": null
       }
     },
@@ -75,12 +75,12 @@
         "Headers": null
       },
       "Result": {
-        "RunWhen": "2015-01-01T14:44:09.0029605-05:00",
+        "RunWhen": "2015-01-04T15:25:08.9423962-05:00",
         "ReturnCode": 201,
         "ReturnCodeStatusText": "201 Created",
         "TestCompletionStatus": true,
         "Body": "",
-        "ElapsedTime": 0.0020001000000000003,
+        "ElapsedTime": 0.0010001,
         "ErrorMessage": null
       }
     }

@@ -39,6 +39,7 @@ import (
 var BaseUrl string
 var JsonOutputFile string
 var PostPath string
+var TestCfg string
 
 // TestSuite Configuration File Format
 type TestSuite struct {
@@ -269,6 +270,7 @@ func main() {
 	// postpath = url of API to post test results to
 	//
 	flag.StringVar(&BaseUrl, "url", "", "The base URL for services")
+	flag.StringVar(&TestCfg, "cfg", "test.tapi.js", "An optional test configuration file. Default to 'test.tapi.js'.")
 	flag.StringVar(&JsonOutputFile, "json", "", "An optional filename, if supplied then test result and the test itself are output to json file.")
 	flag.StringVar(&PostPath, "post", "", "An optional api route to post the test results to. Results are posted as json")
 	flag.Parse()
@@ -279,10 +281,8 @@ func main() {
 		os.Exit(-1)
 	}
 
-	// Read the test definition file - TBD: support files from a directory
-	// Format of filename: *.tapi.js
-	// Currently supports: test.tapi.js
-	result, err := RunTestSuite("test.tapi.js")
+	// Run test suite with test file
+	result, err := RunTestSuite(TestCfg)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
