@@ -79,3 +79,7 @@ Each test file defines a test suite.
 ## Features Considering
 
 * Tests.Expects.BodyContains - expectation that the body of the response will contain specified contents
+
+## Known areas to fix
+
+ * tests fail for apiSelector and apiSelector with projection
