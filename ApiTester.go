@@ -152,6 +152,7 @@ func RunTestSuite(fileName string) (TestSuite, error) {
 
 func RunTest(test *TestSuiteSetup) {
 	fmt.Println("Running test:", test.TestName)
+	fmt.Println("Description:", test.TestDescription)
 	var testResult TestResult
 
 	// Call Uri
