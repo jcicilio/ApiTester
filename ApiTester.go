@@ -52,14 +52,15 @@ type TestSuite struct {
 }
 
 type TestSuiteSetup struct {
-	TestName        string
-	TestDescription string
-	Uri             string
-	Method          string
-	Body            string
-	Headers         []HeaderMap
-	Expects         TestExpectation
-	Result          TestResult
+	TestName            string
+	TestDescription     string
+	Uri                 string
+	Method              string
+	Body                string
+	IncludeBodyInResult bool
+	Headers             []HeaderMap
+	Expects             TestExpectation
+	Result              TestResult
 }
 
 type TestExpectation struct {
@@ -190,14 +191,16 @@ func RunTest(test *TestSuiteSetup) {
 	elapsed := time.Since(start)
 
 	// Save the body of the returned API
-	body, _ := ioutil.ReadAll(resp.Body)
+	if test.IncludeBodyInResult {
+		body, _ := ioutil.ReadAll(resp.Body)
+		testResult.Body = string(body)
+	}
 
 	// Save test results and evaluate
 	testResult.RunWhen = start
 	testResult.ReturnCode = resp.StatusCode
 	testResult.ReturnCodeStatusText = resp.Status
 	testResult.ElapsedTime = elapsed.Seconds()
-	testResult.Body = string(body)
 
 	// Evaluate the headers
 	headersMatch, err := CheckHeaders(resp, test.Expects.Headers)
